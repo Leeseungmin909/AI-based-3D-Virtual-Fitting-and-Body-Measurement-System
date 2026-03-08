@@ -26,4 +26,14 @@ public class UserService {
 
         return jwtTokenProvider.createToken(user.getEmail());
     }
+
+    public void updateBodyInfo(String email, Double heightCm, String bodyImageUrl) {
+        User user = userRepository.findByEmail(email).orElseThrow(() -> {
+            return new IllegalArgumentException("가입되지 않은 사용자입니다.");
+        });
+
+        user.setHeightCm(heightCm);
+        user.setBodyImageUrl(bodyImageUrl);
+        userRepository.save(user);
+    }
 }
