@@ -4,7 +4,9 @@ import kr.ac.dongeui.virtualfitting.domain.user.entity.User;
 import kr.ac.dongeui.virtualfitting.domain.user.repository.UserRepository;
 import kr.ac.dongeui.virtualfitting.global.security.JwtTokenProvider;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 @Service
 public class UserService {
 
