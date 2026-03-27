@@ -75,4 +75,17 @@ public class FittingService {
             System.err.println("파이썬 서버 통신 실패. 파이썬 서버 상태를 확인하세요.");
         }
     }
+
+    // 파이썬 AI 서버가 렌더링 완료 후 결과를 통보할 때 실행됨
+    public void completeFitting(Long fittingId, String resultSplatUrl) {
+        FittingHistory history = fittingHistoryRepository.findById(fittingId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 피팅 이력을 찾을 수 없습니다. ID: " + fittingId));
+
+        // 상태를 SUCCESS로 바꾸고 3D 스플랫 결과물 주소를 저장
+        history.setStatus(FittingStatus.SUCCESS);
+        history.setResultSplatUrl(resultSplatUrl);
+
+        fittingHistoryRepository.save(history);
+        System.out.println("피팅 완료 처리 성공! S3 결과물 URL: " + resultSplatUrl);
+    }
 }
