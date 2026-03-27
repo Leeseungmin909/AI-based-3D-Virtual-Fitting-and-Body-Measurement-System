@@ -29,6 +29,10 @@ public class User {
 
     private Double heightCm;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    //@Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String bodyImageUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String smplMannequinUrl;
 }
