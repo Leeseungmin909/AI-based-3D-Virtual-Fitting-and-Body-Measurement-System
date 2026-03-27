@@ -9,6 +9,7 @@ import kr.ac.dongeui.virtualfitting.domain.user.entity.User;
 import kr.ac.dongeui.virtualfitting.domain.user.repository.UserRepository;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
@@ -32,6 +33,7 @@ public class FittingService {
         this.restTemplate = new RestTemplate();
     }
 
+    @Transactional
     public Long requestFitting(String email, Long clothesId) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
@@ -57,6 +59,7 @@ public class FittingService {
     }
 
     @Async
+    @Transactional
     public void sendToPythonServer(Long fittingId, String smplMannequinUrl, String base3dUrl) {
         try {
             System.out.println("파이썬 AI 서버로 3D 피팅 연산 요청 전송 완료. 피팅 ID: " + fittingId);
@@ -72,20 +75,21 @@ public class FittingService {
             System.out.println("파이썬 서버 통신 완료. 백그라운드 스레드 종료.");
 
         } catch (Exception e) {
-            System.err.println("파이썬 서버 통신 실패. 파이썬 서버 상태를 확인하세요.");
+            System.err.println("파이썬 서버 통신 실패. 파이썬 서버 상태를 확인하세요. 상태를 FAIL로 변경합니다.");
+            FittingHistory history = fittingHistoryRepository.findById(fittingId)
+                    .orElseThrow(() -> new IllegalArgumentException("피팅 이력을 찾을 수 없습니다."));
+            history.setStatus(FittingStatus.FAIL);
         }
     }
 
-    // 파이썬 AI 서버가 렌더링 완료 후 결과를 통보할 때 실행됨
+    @Transactional
     public void completeFitting(Long fittingId, String resultSplatUrl) {
         FittingHistory history = fittingHistoryRepository.findById(fittingId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 피팅 이력을 찾을 수 없습니다. ID: " + fittingId));
 
-        // 상태를 SUCCESS로 바꾸고 3D 스플랫 결과물 주소를 저장
         history.setStatus(FittingStatus.SUCCESS);
         history.setResultSplatUrl(resultSplatUrl);
 
-        fittingHistoryRepository.save(history);
         System.out.println("피팅 완료 처리 성공! S3 결과물 URL: " + resultSplatUrl);
     }
 }
