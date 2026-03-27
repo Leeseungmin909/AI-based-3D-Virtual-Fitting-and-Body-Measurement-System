@@ -60,4 +60,16 @@ public class FittingController {
 
         return ResponseEntity.ok(response);
     }
+
+    // 파이썬 서버 전용 웹훅 (Callback) API
+    @PostMapping("/webhook/complete")
+    public ResponseEntity<String> completeVirtualFitting(@RequestBody Map<String, Object> requestData) {
+        // 파이썬 서버가 보낸 JSON 데이터에서 값 추출
+        Long fittingId = ((Number) requestData.get("fittingId")).longValue();
+        String resultSplatUrl = (String) requestData.get("resultSplatUrl");
+
+        fittingService.completeFitting(fittingId, resultSplatUrl);
+
+        return ResponseEntity.ok("자바 서버: 피팅 결과 업데이트 완료");
+    }
 }
