@@ -7,33 +7,28 @@ import kr.ac.dongeui.virtualfitting.domain.fitting.entity.FittingStatus;
 import kr.ac.dongeui.virtualfitting.domain.fitting.repository.FittingHistoryRepository;
 import kr.ac.dongeui.virtualfitting.domain.user.entity.User;
 import kr.ac.dongeui.virtualfitting.domain.user.repository.UserRepository;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
 
 @Service
+@Transactional
 public class FittingService {
 
     private final FittingHistoryRepository fittingHistoryRepository;
     private final UserRepository userRepository;
     private final ClothesRepository clothesRepository;
-    private final RestTemplate restTemplate;
+    private final AiCommunicationService aiCommunicationService; // 통신 전담 서비스
 
     public FittingService(FittingHistoryRepository fittingHistoryRepository,
                           UserRepository userRepository,
-                          ClothesRepository clothesRepository) {
+                          ClothesRepository clothesRepository,
+                          AiCommunicationService aiCommunicationService) {
         this.fittingHistoryRepository = fittingHistoryRepository;
         this.userRepository = userRepository;
         this.clothesRepository = clothesRepository;
-        this.restTemplate = new RestTemplate();
+        this.aiCommunicationService = aiCommunicationService;
     }
 
-    @Transactional
     public Long requestFitting(String email, Long clothesId) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
@@ -45,11 +40,11 @@ public class FittingService {
         history.setUser(user);
         history.setClothes(clothes);
         history.setStatus(FittingStatus.PENDING);
-        history.setCreatedAt(LocalDateTime.now());
 
         fittingHistoryRepository.save(history);
 
-        sendToPythonServer(
+        // 외부 클래스의 비동기 메서드를 호출
+        aiCommunicationService.sendToPythonServer(
                 history.getId(),
                 user.getSmplMannequinUrl(),
                 clothes.getBase3dUrl()
@@ -58,31 +53,6 @@ public class FittingService {
         return history.getId();
     }
 
-    @Async
-    @Transactional
-    public void sendToPythonServer(Long fittingId, String smplMannequinUrl, String base3dUrl) {
-        try {
-            System.out.println("파이썬 AI 서버로 3D 피팅 연산 요청 전송 완료. 피팅 ID: " + fittingId);
-
-            String pythonAiServerUrl = "http://localhost:8000/api/ai/fit";
-
-            Map<String, Object> requestData = new HashMap<>();
-            requestData.put("fitting_id", fittingId);
-            requestData.put("smpl_mannequin_url", smplMannequinUrl);
-            requestData.put("base_3d_url", base3dUrl);
-
-            restTemplate.postForEntity(pythonAiServerUrl, requestData, String.class);
-            System.out.println("파이썬 서버 통신 완료. 백그라운드 스레드 종료.");
-
-        } catch (Exception e) {
-            System.err.println("파이썬 서버 통신 실패. 파이썬 서버 상태를 확인하세요. 상태를 FAIL로 변경합니다.");
-            FittingHistory history = fittingHistoryRepository.findById(fittingId)
-                    .orElseThrow(() -> new IllegalArgumentException("피팅 이력을 찾을 수 없습니다."));
-            history.setStatus(FittingStatus.FAIL);
-        }
-    }
-
-    @Transactional
     public void completeFitting(Long fittingId, String resultSplatUrl) {
         FittingHistory history = fittingHistoryRepository.findById(fittingId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 피팅 이력을 찾을 수 없습니다. ID: " + fittingId));
