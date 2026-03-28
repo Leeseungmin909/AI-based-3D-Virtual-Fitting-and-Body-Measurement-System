@@ -11,13 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Transactional
 public class FittingService {
 
     private final FittingHistoryRepository fittingHistoryRepository;
     private final UserRepository userRepository;
     private final ClothesRepository clothesRepository;
-    private final AiCommunicationService aiCommunicationService; // 통신 전담 서비스
+    private final AiCommunicationService aiCommunicationService;
 
     public FittingService(FittingHistoryRepository fittingHistoryRepository,
                           UserRepository userRepository,
@@ -43,7 +42,6 @@ public class FittingService {
 
         fittingHistoryRepository.save(history);
 
-        // 외부 클래스의 비동기 메서드를 호출
         aiCommunicationService.sendToPythonServer(
                 history.getId(),
                 user.getSmplMannequinUrl(),
@@ -53,6 +51,7 @@ public class FittingService {
         return history.getId();
     }
 
+    @Transactional
     public void completeFitting(Long fittingId, String resultSplatUrl) {
         FittingHistory history = fittingHistoryRepository.findById(fittingId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 피팅 이력을 찾을 수 없습니다. ID: " + fittingId));
